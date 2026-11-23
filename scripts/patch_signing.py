@@ -1,45 +1,35 @@
 #!/usr/bin/env python3
-"""Adds release signing (read from android/key.properties) to android/app/build.gradle.kts.
-Without key.properties the build falls back to the debug key, so local builds still work."""
-import pathlib, sys
+"""Add ML Kit -dontwarn rules and wire proguard-rules.pro into the release build type.
+Idempotent; supports build.gradle and build.gradle.kts. Run from the project root."""
+import pathlib, re, sys
 
-path = pathlib.Path('android/app/build.gradle.kts')
-if not path.exists():
-    print('build.gradle.kts not found; skipping signing patch (Groovy templates are not patched).')
-    sys.exit(0)
-text = path.read_text()
-if 'keystoreProperties' in text:
-    print('Signing already configured.')
+app = pathlib.Path("android/app")
+rules = app / "proguard-rules.pro"
+RULES = """# ML Kit text recognition: optional language modules that are not bundled
+-dontwarn com.google.mlkit.vision.text.chinese.**
+-dontwarn com.google.mlkit.vision.text.devanagari.**
+-dontwarn com.google.mlkit.vision.text.japanese.**
+-dontwarn com.google.mlkit.vision.text.korean.**
+"""
+existing = rules.read_text() if rules.exists() else ""
+if "mlkit.vision.text.chinese" not in existing:
+    rules.write_text(existing + ("\n" if existing and not existing.endswith("\n") else "") + RULES)
+
+gradle = next((p for p in (app / "build.gradle.kts", app / "build.gradle") if p.exists()), None)
+if gradle is None:
+    sys.exit("no android/app/build.gradle(.kts) found")
+text = gradle.read_text()
+if "proguard-rules.pro" in text:
+    print("gradle already references proguard-rules.pro")
     sys.exit(0)
 
-header = (
-    'import java.io.FileInputStream\nimport java.util.Properties\n\n'
-    'val keystoreProperties = Properties()\n'
-    'val keystorePropertiesFile = rootProject.file("key.properties")\n'
-    'if (keystorePropertiesFile.exists()) {\n'
-    '    keystoreProperties.load(FileInputStream(keystorePropertiesFile))\n'
-    '}\n\n'
-)
-signing = (
-    'android {\n'
-    '    signingConfigs {\n'
-    '        create("release") {\n'
-    '            if (keystorePropertiesFile.exists()) {\n'
-    '                keyAlias = keystoreProperties["keyAlias"] as String\n'
-    '                keyPassword = keystoreProperties["keyPassword"] as String\n'
-    '                storeFile = file(keystoreProperties["storeFile"] as String)\n'
-    '                storePassword = keystoreProperties["storePassword"] as String\n'
-    '            }\n'
-    '        }\n'
-    '    }\n'
-)
-if 'android {\n' not in text or 'signingConfig = signingConfigs.getByName("debug")' not in text:
-    print('Unexpected build.gradle.kts layout; skipping signing patch.')
-    sys.exit(0)
-text = text.replace('android {\n', signing, 1)
-text = text.replace(
-    'signingConfig = signingConfigs.getByName("debug")',
-    'signingConfig = if (keystorePropertiesFile.exists()) signingConfigs.getByName("release") else signingConfigs.getByName("debug")',
-)
-path.write_text(header + text)
-print('Release signing configured.')
+kts = gradle.suffix == ".kts"
+line = ('proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")'
+        if kts else
+        "proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'")
+m = re.search(r"(buildTypes\s*\{.*?\brelease\s*\{)([ \t]*\n?)", text, re.S)
+if not m:
+    sys.exit("could not find buildTypes { release { in " + str(gradle))
+text = text[:m.end(1)] + "\n            " + line + "\n" + text[m.end(1):]
+gradle.write_text(text)
+print("patched", gradle)
