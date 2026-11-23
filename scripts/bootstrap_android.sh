@@ -52,4 +52,7 @@ python3 scripts/patch_signing.py || echo "Signing patch skipped."
 # 6. R8: ML Kit text recognition references optional CJK/Devanagari modules that are not bundled.
 python3 scripts/patch_r8_rules.py || { echo "R8 rules patch failed."; exit 1; }
 
+# 7. Lint-vital crashes inside plugin libraries on CI; skip it.
+python3 scripts/patch_lint_vital.py || { echo "Lint patch failed."; exit 1; }
+
 echo "Android scaffold generated and patched."

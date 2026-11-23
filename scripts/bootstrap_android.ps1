@@ -59,5 +59,8 @@ if (Get-Command python -ErrorAction SilentlyContinue) { python scripts/patch_sig
 # 6. R8 rules for ML Kit optional language modules (needs Python 3).
 if (Get-Command python -ErrorAction SilentlyContinue) { python scripts/patch_r8_rules.py }
 
+# 7. Skip lint-vital (crashes inside plugin libraries).
+if (Get-Command python -ErrorAction SilentlyContinue) { python scripts/patch_lint_vital.py }
+
 Write-Host 'Android scaffold generated and patched.' -ForegroundColor Green
 Write-Host 'Next: flutter pub get; dart run build_runner build --delete-conflicting-outputs; flutter analyze; flutter test'
