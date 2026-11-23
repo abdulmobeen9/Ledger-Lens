@@ -54,6 +54,7 @@ jobs:
           else
             python3 scripts/patch_signing.py
             python3 scripts/patch_r8_rules.py
+            python3 scripts/patch_lint_vital.py
           fi
 
       - name: Install dependencies and generate code
@@ -84,8 +85,8 @@ jobs:
       - name: Build APK and AAB
         run: |
           DEFINES="--dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
-          flutter build apk --release $DEFINES
-          flutter build appbundle --release $DEFINES
+          flutter build apk --release --no-shrink $DEFINES
+          flutter build appbundle --release --no-shrink $DEFINES
 
       - name: Name artifacts
         run: |
