@@ -5,6 +5,7 @@ import '../../app/providers.dart';
 import '../../app/settings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
+import '../../data/local/app_database.dart'; 
 import '../../domain/duplicates.dart';
 import 'transaction_widgets.dart';
 
