@@ -94,3 +94,39 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 14
+
+  smoke-test:
+    name: Launch APK on emulator (captures crash log)
+    needs: android-apk
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ledgerlens-android-apk-${{ github.sha }}
+          path: apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run app on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: bash scripts/smoke_test.sh apk/app-release.apk
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ledgerlens-smoke-logs-${{ github.sha }}
+          path: smoke-logs/
+          if-no-files-found: warn
+          retention-days: 14
