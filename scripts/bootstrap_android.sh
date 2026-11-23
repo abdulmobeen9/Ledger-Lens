@@ -49,4 +49,7 @@ done
 # 5. Release signing from android/key.properties (falls back to the debug key when absent).
 python3 scripts/patch_signing.py || echo "Signing patch skipped."
 
+# 6. R8: ML Kit text recognition references optional CJK/Devanagari modules that are not bundled.
+python3 scripts/patch_r8_rules.py || { echo "R8 rules patch failed."; exit 1; }
+
 echo "Android scaffold generated and patched."
